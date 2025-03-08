@@ -1,0 +1,37 @@
+<div class="calculator">
+    <!-- Display area -->
+    <div class="display">{{ displayValue }}</div>
+  
+    <!-- Buttons grid -->
+    <div class="buttons">
+      <!-- Top row: Clear, Sign Toggle, Percentage, Divide -->
+      <button (click)="clear()">AC</button>
+      <button (click)="toggleSign()">±</button>
+      <button (click)="percentage()">%</button>
+      <button class="operator" (click)="setOperator('÷')">÷</button>
+  
+      <!-- Second row: 7,8,9, Multiply -->
+      <button (click)="appendDigit('7')">7</button>
+      <button (click)="appendDigit('8')">8</button>
+      <button (click)="appendDigit('9')">9</button>
+      <button class="operator" (click)="setOperator('×')">×</button>
+  
+      <!-- Third row: 4,5,6, Subtract -->
+      <button (click)="appendDigit('4')">4</button>
+      <button (click)="appendDigit('5')">5</button>
+      <button (click)="appendDigit('6')">6</button>
+      <button class="operator" (click)="setOperator('-')">-</button>
+  
+      <!-- Fourth row: 1,2,3, Add -->
+      <button (click)="appendDigit('1')">1</button>
+      <button (click)="appendDigit('2')">2</button>
+      <button (click)="appendDigit('3')">3</button>
+      <button class="operator" (click)="setOperator('+')">+</button>
+  
+      <!-- Fifth row: 0 (wide), Decimal, Equals -->
+      <button class="zero" (click)="appendDigit('0')">0</button>
+      <button (click)="appendDot()">.</button>
+      <button class="operator" (click)="calculate()">=</button>
+    </div>
+  </div>
+  
