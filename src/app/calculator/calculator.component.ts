@@ -1,5 +1,6 @@
-import { Component, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, AfterViewChecked, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LocalStorageService } from '../local-storage.service';
 
 /** Interface representing an item in the calculation history */
 interface HistoryItem {
@@ -15,8 +16,10 @@ interface HistoryItem {
   templateUrl: './calculator.component.html', // Path to the HTML template file
   styleUrl: './calculator.component.css'      // Path to CSS styles for this component
 })
-/** The main Angular component that implements the calculator's logic and user interface */
-export class CalculatorComponent implements AfterViewChecked {
+/** 
+ * The main Angular component that implements the calculator's logic and user interface
+*/
+export class CalculatorComponent implements AfterViewChecked, OnInit {
   /** Tokens representing the current mathematical expression (e.g., ["5", "+", "3"]) */
   private tokens: string[] = [];
 
@@ -25,6 +28,8 @@ export class CalculatorComponent implements AfterViewChecked {
 
   /** Flag to show/hide the confirmation dialog for clearing all data */
   showConfirmation: boolean = false;
+
+  constructor(private localStorage: LocalStorageService) {}
 
   // ViewChild decorator to reference the HTML element for the history container
   @ViewChild('historyContainer') private historyContainer!: ElementRef;
@@ -73,6 +78,14 @@ export class CalculatorComponent implements AfterViewChecked {
     this.scrollHistoryToBottom();
   }
 
+  ngOnInit(): void {
+    // Load stored history
+    const storedHistory = this.localStorage.getItem('equations');
+    if (storedHistory) {
+      this.history = JSON.parse(storedHistory);
+    }
+  }
+
   // ------------------- Public Methods -------------------
 
   /**
@@ -88,6 +101,7 @@ export class CalculatorComponent implements AfterViewChecked {
   confirmClearAll(): void {
     this.tokens = [];
     this.history = [];
+    this.saveHistory(); // Save history to local storage
     this.showConfirmation = false;
   }
 
@@ -212,6 +226,9 @@ export class CalculatorComponent implements AfterViewChecked {
         expression: this.tokens.join(''),
         result: rounded.toString()
       });
+
+      // Save history to local storage
+      this.saveHistory();
       
       // Update current tokens for chaining
       this.tokens = [rounded.toString()];  
@@ -244,6 +261,13 @@ export class CalculatorComponent implements AfterViewChecked {
    */
   private roundResult(num: number): number {
     return parseFloat(num.toFixed(10));
+  }
+
+  /**
+   * Saves the equation history to local storage
+   */
+  private saveHistory(): void {
+    this.localStorage.setItem('equations', JSON.stringify(this.history));
   }
 
   /**
