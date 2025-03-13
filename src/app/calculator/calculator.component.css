@@ -1,46 +1,207 @@
+/* Main container for the calculator, setting its dimensions and appearance */
 .calculator {
-    width: 320px;
-    margin: 40px auto;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    background: #f0f0f0;
-  }
-  
-  .display {
-    background: #000;
-    color: #fff;
-    font-size: 48px;
-    padding: 20px;
-    text-align: right;
-    font-family: 'Helvetica Neue', sans-serif;
-  }
-  
-  .buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-  }
-  
-  button {
-    font-size: 24px;
-    padding: 20px;
-    border: 1px solid #ddd;
-    background: #e0e0e0;
-    cursor: pointer;
-    outline: none;
-    transition: background 0.2s;
-  
-    &:active {
-      background: #ccc;
-    }
-  }
-  
-  button.operator {
-    background: #ff9500;
-    color: #fff;
-  }
-  
-  button.zero {
-    grid-column: span 2;
-  }
-  
+  width: 265px;
+  height: 574px;
+  margin: 0 auto;
+  border-radius: 30px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 8px 16px 8px;
+  justify-content: flex-end;
+}
+
+/* Container for displaying calculations (history and live results) */
+.display {
+  flex: 1;
+  background: #000;
+  color: #fff;
+  font-family: 'Helvetica Neue', sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding-left: 8px;
+  padding-right: 8px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* Container for previous calculation history */
+.history {
+  flex-grow: 1;
+  font-size: 14px;
+  color: #ccc;
+  overflow-y: auto;
+  text-align: right;
+  white-space: normal; 
+  word-wrap: break-word;
+  max-height: 200px;
+}
+
+/* Individual history entry */
+.history-item {
+  margin-bottom: 8px;
+}
+
+/* Stylizes the result portion of history entries */
+.history-result {
+  font-weight: bold;
+  color: #fff;
+}
+
+/* Displays real-time calculation as you type (small text at bottom) */
+.live-result {
+  font-size: 24px;
+  text-align: right;
+  white-space: pre-wrap;
+  word-wrap: break-all;
+  opacity: 1;
+  color: #ccc;
+  min-height: 32px;
+}
+
+/* Main input expression display (large numbers at top) */
+.expression {
+  font-size: 40px;
+  text-align: right;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  justify-content: flex-end;
+}
+
+/* Grid layout for calculator buttons (5 columns arranged as a square grid) */
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 4px;
+  padding: 4px;
+  aspect-ratio: 1;
+}
+
+/* Base style for all buttons (rounded circles with dark background) */
+button {
+  font-size: 24px;
+  border: none;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+/* Style when button is actively pressed (visual feedback) */
+button:active {
+  background: #555;
+}
+
+/* Hover effect to show interactivity */
+button:hover {
+  opacity: 0.9;
+}
+
+/* Orange-colored buttons for math operations (+, -, ×, ÷) */
+button.operator {
+  background: #ff9500;
+  color: #fff;
+}
+
+/* Special styling for functional buttons (AC, backspace, %, trash) */
+button.function {
+  color: #fff;
+}
+
+/* Zero button styled as a rounded rectangle instead of circle */
+button.zero {
+  border-radius: 30px;
+}
+
+/* Number buttons (white with black text, contrasting from other buttons) */
+button.digit {
+  background: #fff;
+  color: #000;
+}
+
+/* Placeholder buttons to maintain grid alignment without functionality */
+button.empty {
+  background: transparent;
+  pointer-events: none;
+  border: none;
+}
+
+/* Full-screen overlay for modal dialogs (like error messages) */
+.dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(230, 230, 230, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Styles for modal content container (centered dark box) */
+.dialog-content {
+  background-color: #000;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-width: 90%;
+  text-align: center;
+  font-family: 'Helvetica Neue', sans-serif;
+}
+
+/* Headers in modal dialogs */
+.dialog-content h3 {
+  margin-top: 0;
+  color: #fff;
+}
+
+/* Body text in modal dialogs */
+.dialog-content p {
+  margin: 12px 0 24px;
+  color: #fff;
+}
+
+/* Buttons inside modal dialog (white text with colored backgrounds) */
+.dialog-content button {
+  display: inline-block;
+  background-color: #fff;
+  color: #000;
+  border: none;
+  padding: 12px 24px;
+  margin: 0 8px;
+  border-radius: 16px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Confirmation button in modal (orange color) */
+.dialog-content .confirm-button {
+  background-color: #ff9500;
+  color: white;
+}
+
+/* Cancel button in modal (bordered style) */
+.dialog-content .cancel-button {
+  border: 1px solid #999;
+}
+
+/* Container to hold dialog buttons side by side */
+.dialog-content .button-group {
+  display: flex;
+  justify-content: space-evenly;
+  width: 100%;
+}
+
+/* Font Awesome icon styling (size and spacing) */
+.fa {
+  font-size: 24px;
+}

@@ -1,132 +1,260 @@
-import { Component, input } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+/** Interface representing an item in the calculation history */
+interface HistoryItem {
+  /** The mathematical expression as a string (e.g., "5+3") */
+  expression: string;
+  /** The evaluated result of the expression (e.g., "8") */
+  result: string;
+}
 
 @Component({
-  selector: 'app-calculator',
-  imports: [],
-  templateUrl: './calculator.component.html',
-  styleUrl: './calculator.component.css'
+  selector: 'app-calculator', // Selector used in the HTML to include this component
+  imports: [CommonModule],   // Import common Angular modules (needed for structural directives like *ngIf)
+  templateUrl: './calculator.component.html', // Path to the HTML template file
+  styleUrl: './calculator.component.css'      // Path to CSS styles for this component
 })
-export class CalculatorComponent {
-  // The text shown in the calculator display.
-  displayValue = '0';
+/** The main Angular component that implements the calculator's logic and user interface */
+export class CalculatorComponent implements AfterViewChecked {
+  /** Tokens representing the current mathematical expression (e.g., ["5", "+", "3"]) */
+  private tokens: string[] = [];
 
-  // Holds the first operand in any operation.
-  private firstOperand: number | null = null;
+  /** List of previous calculations stored in history items */
+  history: HistoryItem[] = [];
 
-  // Holds the current operator
-  private operator: string | null = null;
-  
-  // Flag to indicate if we should start a new opearnd entry.
-  private waitingForSecondOperand = false;
+  /** Flag to show/hide the confirmation dialog for clearing all data */
+  showConfirmation: boolean = false;
 
-  /** 
-   * Append a digit (0-9) to the display. 
+  // ViewChild decorator to reference the HTML element for the history container
+  @ViewChild('historyContainer') private historyContainer!: ElementRef;
+
+  // ------------------- Getters and Setters -------------------
+
+  /**
+   * Gets the current display value for the calculator screen
    */
-  appendDigit(digit: string): void {
-    if (this.waitingForSecondOperand) {
-      // Start a new number
-      this.displayValue = digit;
-      this.waitingForSecondOperand = false;
-    } 
-    else {
-      // Avoid multiple leading zeros
-      this.displayValue = this.displayValue === '0' ? digit: this.displayValue + digit;
-    }
-  }
-
-  /** 
-   * Append a decimal point if not already present. 
-   */
-  appendDot(): void {
-    if (this.waitingForSecondOperand) {
-      this.displayValue = '0';
-      this.waitingForSecondOperand = false;
-      return;
-    }
-    if (!this.displayValue.includes('.')) {
-      this.displayValue += '.';
-    }
-  }
-
-  /** 
-   * Clear the current entry and reset state 
-   */
-  clear(): void {
-    this.displayValue = '0';
-    this.firstOperand = null;
-    this.operator = null;
-    this.waitingForSecondOperand = false;
-  }
-
-  /** 
-   * Toggle the sign of the current display value 
-   */
-  toggleSign(): void {
-    if (this.displayValue !== '0') {
-      // Toggle the sign
-      const toggled = (parseFloat(this.displayValue) * -1).toString();
-      this.displayValue = toggled;
-
-      // If we're still working with the first operand, update it.
-      if (!this.waitingForSecondOperand) {
-        this.firstOperand = parseFloat(toggled);
-      }
-    }
-  }
-
-  /** 
-   * Convert the current display value to a percentage 
-   */
-  percentage(): void {
-    this.displayValue = (parseFloat(this.displayValue) / 100).toString();
+  get displayValue(): string {
+    return this.tokens.length > 0 ? this.tokens.join('') : '0';
+    // Returns joined tokens or "0" if there's nothing to display
   }
 
   /**
-   * Set the operator and prepare to receive the second operand.
-   * If an operator already exists, perform the calculation first.
+   * Gets the real-time evaluation result of current tokens (shows while typing)
    */
-  setOperator(nextOperator: string): void {
-    const inputValue = parseFloat(this.displayValue);
-
-    if (this.firstOperand === null) {
-      this.firstOperand = inputValue;
-    } 
-    else if (this.operator && !this.waitingForSecondOperand) {
-      const result = this.performCalculation(this.operator, this.firstOperand, inputValue);
-      this.displayValue = String(result);
-      this.firstOperand = result;
+  get liveResult(): string {
+    if (this.tokens.length === 0) return '';
+    
+    let expression = this.tokens.join('');
+    
+    // Ignore trailing operator for evaluation
+    if (this.isOperator(expression.slice(-1))) {
+      expression = this.tokens.slice(0, -1).join('');
     }
 
-    this.operator = nextOperator;
-    this.waitingForSecondOperand = true;
+    // Replace operator symbols with JavaScript syntax
+    expression = expression.replace(/÷/g, '/').replace(/×/g, '*').replace(/\^/g, '**');
+    
+    try {
+      const result = eval(expression);
+      return this.roundResult(result).toString();
+    } catch (error) {
+      return '';
+    }
   }
 
-  /** 
-   * Perform the calculation when the equals buttin is pressed. 
+  // ------------------- Angular Lifecycle Hook -------------------
+
+  /**
+   * Angular lifecycle hook that runs after view updates
+   * Scrolls history container to bottom whenever the view is updated
+   */
+  ngAfterViewChecked(): void {
+    this.scrollHistoryToBottom();
+  }
+
+  // ------------------- Public Methods -------------------
+
+  /**
+   * Displays the confirmation dialog for clearing all expressions and history
+   */
+  clearAllDialog(): void {
+    this.showConfirmation = true;
+  }
+
+  /**
+   * Clears all current tokens and history, then hides the confirmation dialog
+   */
+  confirmClearAll(): void {
+    this.tokens = [];
+    this.history = [];
+    this.showConfirmation = false;
+  }
+
+  /**
+   * Closes the clear confirmation dialog without performing any action
+   */
+  cancelClearAll(): void {
+    this.showConfirmation = false;
+  }
+
+  /**
+   * Adds a digit character to current operand(s)
+   * @param digit - the numeric character being added (e.g., "5")
+   */
+  appendDigit(digit: string): void {
+    if (this.tokens[this.tokens.length-1] === "Error") this.tokens = [];
+    
+    // Start new operand if needed (e.g., after an operator)
+    if (this.tokens.length === 0 || this.isOperator(this.tokens[this.tokens.length -1])) {
+      this.tokens.push(digit);
+    } else {
+      const last = this.tokens[this.tokens.length-1];
+      this.tokens[this.tokens.length-1] = last + digit;
+    }
+  }
+
+  /**
+   * Adds a decimal point to the current operand
+   */
+  appendDot(): void {
+    // Start new "0.x" if needed (e.g., empty display)
+    if (this.tokens.length ===0 || this.isOperator(this.tokens[this.tokens.length-1])) {
+      this.tokens.push("0.");
+    } else {
+      const last = this.tokens.slice(-1)[0];
+      if (!last.includes(".")) this.tokens[this.tokens.length-1] += ".";
+    }
+  }
+
+  /**
+   * Adds an operator to the current expression
+   * @param operator - the mathematical operator being added (+, -, ×, ÷)
+   */
+  setOperator(operator: string): void {
+    if (this.tokens.length ===0) this.tokens = ['0', operator]; // Start with 0 if empty
+    
+    // Replace existing trailing operator (e.g., changing from "+" to "×")
+    if (this.isOperator(this.tokens[this.tokens.length-1])) {
+      this.tokens[this.tokens.length-1] = operator;
+    } else {
+      this.tokens.push(operator);
+    }
+  }
+
+  /**
+   * Toggles the sign of current operand between positive and negative
+   */
+  toggleSign(): void {
+    const lastToken = this.tokens[this.tokens.length-1];
+    
+    if (!this.isOperator(lastToken)) {
+      const value = lastToken.startsWith("-") ? 
+        lastToken.slice(1) : `-${lastToken}`;
+      this.tokens[this.tokens.length-1] = value;
+    }
+  }
+
+  /**
+   * Converts current operand to percentage (divides by 100)
+   */
+  percentage(): void {
+    const lastToken = this.tokens[this.tokens.length-1];
+    
+    if (!this.isOperator(lastToken)) {
+      const value = parseFloat(lastToken) / 100;
+      this.tokens[this.tokens.length-1] = value.toString();
+    }
+  }
+
+  /**
+   * Adds parentheses to the current expression
+   * @param bracket - either "(" or ")"
+   */
+  appendBracket(bracket: string): void {
+    this.tokens.push(bracket);  
+  }
+
+  /**
+   * Removes last character or token from current expression
+   */
+  delete(): void {
+    const lastToken = this.tokens[this.tokens.length-1];
+    
+    if (lastToken.length > 1) {
+      this.tokens[this.tokens.length-1] = lastToken.slice(0, -1);
+    } else {
+      this.tokens.pop();
+    }
+  }
+
+  /**
+   * Evaluates current mathematical expression and updates history
    */
   calculate(): void {
-    if (this.operator && this.firstOperand !== null && !this.waitingForSecondOperand) {
-      const inputValue = parseFloat(this.displayValue);
-      const result = this.performCalculation(this.operator, this.firstOperand, inputValue);
-      this.displayValue = String(result);
+    if (this.tokens.length ===0) return;
+    
+    // Remove trailing operator
+    while (this.isOperator(this.tokens[this.tokens.length-1])) this.tokens.pop();
+    
+    const expression = this.tokens.join('');
+    
+    // Replace operator symbols with valid javascript
+    let jsExpression = expression.replace(/÷/g, '/').replace(/×/g, '*')
+                              .replace(/\^/g, '**');
+    
+    try {
+      const result = eval(jsExpression);
+      const rounded = this.roundResult(result);
       
-      // Reset operator so that further operations can start afresh.
-      this.firstOperand = result;
-      this.operator = null;
+      // Save to history
+      this.history.push({
+        expression: this.tokens.join(''),
+        result: rounded.toString()
+      });
+      
+      // Update current tokens for chaining
+      this.tokens = [rounded.toString()];  
+    } catch {
+      // Handle errors gracefully (invalid input)
+      this.tokens = ['Error'];
     }
   }
 
-  /** 
-   * A helper function to perform arithmetic operations 
+  /**
+   * Clears all current tokens (resets input field)
    */
-  performCalculation(operator: string, firstOperand: number, secondOperand: number): number {
-    switch (operator) {
-      case '+': return firstOperand + secondOperand;
-      case '-': return firstOperand - secondOperand;
-      case '×': return firstOperand * secondOperand;
-      case '÷': return secondOperand !== 0 ? firstOperand / secondOperand : NaN;
-      default: return secondOperand;
-    }
+  clear(): void {
+    this.tokens = [];
   }
 
+  // ------------------- Private Helper Methods -------------------
+
+  /**
+   * Checks if a token is one of the supported operators
+   * @param token - string to check against operator list
+   */
+  private isOperator(token: string): boolean {
+    return ['+', '-', '×', '÷', '^'].includes(token);
+  }
+
+  /**
+   * Rounds number to avoid floating point precision issues
+   * @param num - numeric value to round
+   */
+  private roundResult(num: number): number {
+    return parseFloat(num.toFixed(10));
+  }
+
+  /**
+   * Scrolls the history container to display the latest entry at the bottom
+   */
+  private scrollHistoryToBottom(): void {
+    if (this.historyContainer) {
+      try {
+        this.historyContainer.nativeElement.scrollTop = 
+          this.historyContainer.nativeElement.scrollHeight;
+      } catch (error) { }
+    }
+  }
 }

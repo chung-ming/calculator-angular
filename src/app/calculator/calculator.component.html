@@ -1,37 +1,86 @@
+<!-- 
+  Main container for the calculator interface. Contains display area and buttons grid.
+-->
 <div class="calculator">
-    <!-- Display area -->
-    <div class="display">{{ displayValue }}</div>
-  
-    <!-- Buttons grid -->
-    <div class="buttons">
-      <!-- Top row: Clear, Sign Toggle, Percentage, Divide -->
-      <button (click)="clear()">AC</button>
-      <button (click)="toggleSign()">±</button>
-      <button (click)="percentage()">%</button>
-      <button class="operator" (click)="setOperator('÷')">÷</button>
-  
-      <!-- Second row: 7,8,9, Multiply -->
-      <button (click)="appendDigit('7')">7</button>
-      <button (click)="appendDigit('8')">8</button>
-      <button (click)="appendDigit('9')">9</button>
-      <button class="operator" (click)="setOperator('×')">×</button>
-  
-      <!-- Third row: 4,5,6, Subtract -->
-      <button (click)="appendDigit('4')">4</button>
-      <button (click)="appendDigit('5')">5</button>
-      <button (click)="appendDigit('6')">6</button>
-      <button class="operator" (click)="setOperator('-')">-</button>
-  
-      <!-- Fourth row: 1,2,3, Add -->
-      <button (click)="appendDigit('1')">1</button>
-      <button (click)="appendDigit('2')">2</button>
-      <button (click)="appendDigit('3')">3</button>
-      <button class="operator" (click)="setOperator('+')">+</button>
-  
-      <!-- Fifth row: 0 (wide), Decimal, Equals -->
-      <button class="zero" (click)="appendDigit('0')">0</button>
-      <button (click)="appendDot()">.</button>
-      <button class="operator" (click)="calculate()">=</button>
+  <!-- 
+    Display section: shows current input, live results, and calculation history.
+    History is displayed above the current expression for easy reference. 
+  -->
+  <div class="display">
+    <!-- History section: loops over history array to display past calculations -->
+    <div class="history" #historyContainer>
+      <div *ngFor="let item of history" class="history-item">
+        <!-- Each entry shows the expression and its computed result -->
+        <span class="history-expression">{{ item.expression }}</span> = 
+        <span class="history-result">{{ item.result }}</span>
+      </div>
+    </div>
+    <!-- Shows partial results during input (e.g., "3+5" shows live calculation as 8) -->
+    <div class="live-result">{{ liveResult }}</div>
+
+    <!-- Displays the current mathematical expression being entered -->
+    <div class="expression">{{ displayValue }}</div>
+  </div>
+
+  <!-- 
+    Confirmation dialog for clearing all history. Only appears when showConfirmation is true.
+    Prevents accidental deletions by requiring explicit confirmation.
+  -->
+  <div *ngIf="showConfirmation" class="dialog-backdrop">
+    <!-- Modal overlay with buttons to cancel or confirm clear action -->
+    <div class="dialog-content">
+      <h3>Clear All?</h3>
+      <p>All history will be erased permanently.</p>
+      <div class="button-group">
+        <!-- Cancel button discards the clear request -->
+        <button (click)="cancelClearAll()" class="cancel-button">Cancel</button>
+
+        <!-- Confirm button permanently deletes all history -->
+        <button (click)="confirmClearAll()" class="confirm-button">Confirm</button>
+      </div>
     </div>
   </div>
-  
+
+  <!-- 
+    Grid layout for calculator buttons (5 columns). Each row represents a button tier.
+    Buttons send commands to update the displayValue or trigger calculations.
+  -->
+  <div class="buttons">
+    <!-- First row: Clear buttons and parentheses -->
+    <button (click)="clear()">AC</button>
+    <button (click)="toggleSign()">+/-</button>
+    <button class="function" (click)="percentage()">%</button>
+    <button class="function" (click)="appendBracket('(')">(</button>
+    <button class="function" (click)="appendBracket(')')">)</button>
+
+    <!-- Second row: Digits 7-9, division operator (+ trash can for clearing all history) -->
+    <button class="digit" (click)="appendDigit('7')">7</button>
+    <button class="digit" (click)="appendDigit('8')">8</button>
+    <button class="digit" (click)="appendDigit('9')">9</button>
+    <button class="operator" (click)="setOperator('÷')">÷</button>
+    <button class="function" (click)="clearAllDialog()">
+      <i class="fas fa-trash"></i>
+    </button>
+
+    <!-- Third row: Digits 4-6, multiplication operator (+ backspace for deleting last character) -->    <button class="digit" (click)="appendDigit('4')">4</button>
+    <button class="digit" (click)="appendDigit('5')">5</button>
+    <button class="digit" (click)="appendDigit('6')">6</button>
+    <button class="operator" (click)="setOperator('×')">×</button>
+    <button class="function" (click)="delete()">
+      <i class="fas fa-backspace"></i>
+    </button>
+    
+    <!-- Fourth row: Digits 1-3, subtraction operator (+ exponentiation) -->
+    <button class="digit" (click)="appendDigit('1')">1</button>
+    <button class="digit" (click)="appendDigit('2')">2</button>
+    <button class="digit" (click)="appendDigit('3')">3</button>
+    <button class="operator" (click)="setOperator('-')">-</button>
+    <button class="operator" (click)="setOperator('^')">^</button>
+
+    <!-- Fifth row: Zero (double-width), decimal point, addition operator, and equals -->
+    <button class="zero digit" style="grid-column: span 2;" (click)="appendDigit('0')">0</button>
+    <button class="digit" (click)="appendDot()">.</button>
+    <button class="operator" (click)="setOperator('+')">+</button>
+    <button class="operator"(click)="calculate()">=</button>
+  </div>
+</div>
