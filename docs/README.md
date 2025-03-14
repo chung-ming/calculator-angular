@@ -5,6 +5,8 @@ A clean and intuitive calculator built with Angular, offering real-time calculat
 ---
 
 ## Demo 🎬
+The live demo version is hosted on Firebase and can be accessed [here](https://calculator-angular-81db5.web.app).
+
 ![Calculator Demo](/docs/img/Screenshot-1.png)
 ![Calculator Demo](/docs/img/Screenshot-2.png)
 ![Calculator Demo](/docs/img/Screenshot-3.png)
