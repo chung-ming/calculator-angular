@@ -12,6 +12,7 @@ interface HistoryItem {
 
 @Component({
   selector: 'app-calculator', // Selector used in the HTML to include this component
+  standalone: true,
   imports: [CommonModule],   // Import common Angular modules (needed for structural directives like *ngIf)
   templateUrl: './calculator.component.html', // Path to the HTML template file
   styleUrl: './calculator.component.css'      // Path to CSS styles for this component
@@ -20,8 +21,18 @@ interface HistoryItem {
  * The main Angular component that implements the calculator's logic and user interface
 */
 export class CalculatorComponent implements AfterViewChecked, OnInit {
+  // ------------------- Private Properties -------------------
+
+  /**
+   * Number of decimal places to round results, used to avoid floating-point 
+   * precision errors
+   */
+  private readonly ROUND_DP = 10;
+
   /** Tokens representing the current mathematical expression (e.g., ["5", "+", "3"]) */
   private tokens: string[] = [];
+
+  // ------------------- Public Properties -------------------
 
   /** List of previous calculations stored in history items */
   history: HistoryItem[] = [];
@@ -29,6 +40,11 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
   /** Flag to show/hide the confirmation dialog for clearing all data */
   showConfirmation: boolean = false;
 
+  // ------------------- Constructor -------------------
+
+  /**
+   * Dependency injection for accessing local storage operations through the service
+   */
   constructor(private localStorage: LocalStorageService) {}
 
   // ViewChild decorator to reference the HTML element for the history container
@@ -40,8 +56,8 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
    * Gets the current display value for the calculator screen
    */
   get displayValue(): string {
-    return this.tokens.length > 0 ? this.tokens.join('') : '0';
     // Returns joined tokens or "0" if there's nothing to display
+    return this.tokens.length > 0 ? this.tokens.join('') : '0';
   }
 
   /**
@@ -58,10 +74,10 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
     }
 
     // Replace operator symbols with JavaScript syntax
-    expression = expression.replace(/÷/g, '/').replace(/×/g, '*').replace(/\^/g, '**');
+    expression = this.replaceOperators(expression);
     
     try {
-      const result = eval(expression);
+      const result = window.eval(expression);
       return this.roundResult(result).toString();
     } catch (error) {
       return '';
@@ -78,6 +94,10 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
     this.scrollHistoryToBottom();
   }
 
+  /**
+   * Initialize component state by restoring history from local storage when 
+   * the component is first loaded
+   */
   ngOnInit(): void {
     // Load stored history
     const storedHistory = this.localStorage.getItem('equations');
@@ -122,7 +142,9 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
     // Start new operand if needed (e.g., after an operator)
     if (this.tokens.length === 0 || this.isOperator(this.tokens[this.tokens.length -1])) {
       this.tokens.push(digit);
-    } else {
+    }
+    // Append digit to current operand (build multi-digit numbers) 
+    else {
       const last = this.tokens[this.tokens.length-1];
       this.tokens[this.tokens.length-1] = last + digit;
     }
@@ -135,7 +157,10 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
     // Start new "0.x" if needed (e.g., empty display)
     if (this.tokens.length ===0 || this.isOperator(this.tokens[this.tokens.length-1])) {
       this.tokens.push("0.");
-    } else {
+    } 
+    // Prevents adding multiple decimal points in the same number. 
+    // Allows only one '.' per operand
+    else {
       const last = this.tokens.slice(-1)[0];
       if (!last.includes(".")) this.tokens[this.tokens.length-1] += ".";
     }
@@ -146,7 +171,8 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
    * @param operator - the mathematical operator being added (+, -, ×, ÷)
    */
   setOperator(operator: string): void {
-    if (this.tokens.length ===0) this.tokens = ['0', operator]; // Start with 0 if empty
+    // Start with 0 if empty
+    if (this.tokens.length ===0) this.tokens = ['0', operator];
     
     // Replace existing trailing operator (e.g., changing from "+" to "×")
     if (this.isOperator(this.tokens[this.tokens.length-1])) {
@@ -162,6 +188,8 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
   toggleSign(): void {
     const lastToken = this.tokens[this.tokens.length-1];
     
+    // Toggle the sign of current operand between positive and negative. 
+    // Only applies to non-operator tokens
     if (!this.isOperator(lastToken)) {
       const value = lastToken.startsWith("-") ? 
         lastToken.slice(1) : `-${lastToken}`;
@@ -214,18 +242,14 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
     const expression = this.tokens.join('');
     
     // Replace operator symbols with valid javascript
-    let jsExpression = expression.replace(/÷/g, '/').replace(/×/g, '*')
-                              .replace(/\^/g, '**');
+    let jsExpression = this.replaceOperators(expression);
     
     try {
-      const result = eval(jsExpression);
+      const result = window.eval(jsExpression);
       const rounded = this.roundResult(result);
       
       // Save to history
-      this.history.push({
-        expression: this.tokens.join(''),
-        result: rounded.toString()
-      });
+      this.history.push({ expression, result: rounded.toString() });
 
       // Save history to local storage
       this.saveHistory();
@@ -256,11 +280,19 @@ export class CalculatorComponent implements AfterViewChecked, OnInit {
   }
 
   /**
+   * Converts mathematical symbols (÷, ×, ^) to JavaScript-compatible 
+   * operators (/ , *, **) for evaluation
+   */
+  private replaceOperators(expression: string): string {
+    return expression.replace(/÷/g, '/').replace(/×/g, '*').replace(/\^/g, '**');
+  }
+
+  /**
    * Rounds number to avoid floating point precision issues
    * @param num - numeric value to round
    */
   private roundResult(num: number): number {
-    return parseFloat(num.toFixed(10));
+    return parseFloat(num.toFixed(this.ROUND_DP));
   }
 
   /**
